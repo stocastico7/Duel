@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minute Betting Game - Multiplayer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .connection-status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        .connection-status.connected {
+            background: #27ae60;
+            color: white;
+        }
+
+        .connection-status.disconnected {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .timer {
+            font-size: 3em;
+            font-weight: bold;
+            color: #764ba2;
+            margin: 20px 0;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .timer.warning {
+            color: #e74c3c;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .status {
+            font-size: 1.2em;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        .player-setup {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+
+        .player-setup h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .player-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .player-input-group input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+        }
+
+        .player-input-group button {
+            padding: 12px 25px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .player-input-group button:hover {
+            background: #5568d3;
+        }
+
+        .player-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .player-tag {
+            background: #f0f0f0;
+            padding: 8px 15px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .player-tag button {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .start-game-btn {
+            width: 100%;
+            padding: 15px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.2em;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background 0.3s;
+        }
+
+        .start-game-btn:hover {
+            background: #229954;
+        }
+
+        .start-game-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .leave-btn {
+            width: 100%;
+            padding: 12px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+
+        .leave-btn:hover {
+            background: #c0392b;
+        }
+
+        .lobby-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .lobby-info p {
+            margin: 5px 0;
+            color: #666;
+        }
+
+        .lobby-info .your-name {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 1.1em;
+        }
+
+        .game-area {
+            display: none;
+        }
+
+        .game-area.active {
+            display: block;
+        }
+
+        .players-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .player-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .player-card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .balance {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #27ae60;
+            margin: 10px 0;
+        }
+
+        .balance.negative {
+            color: #e74c3c;
+        }
+
+        .bet-input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            margin-top: 10px;
+        }
+
+        .bet-btn {
+            width: 100%;
+            padding: 10px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+
+        .bet-btn:hover:not(:disabled) {
+            background: #5568d3;
+        }
+
+        .bet-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .bet-placed {
+            background: #27ae60;
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+
+        .results {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+
+        .results h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .round-results {
+            margin-bottom: 30px;
+        }
+
+        .round-header {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #764ba2;
+            margin-bottom: 15px;
+        }
+
+        .pair {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .pair.winner {
+            border-left-color: #27ae60;
+        }
+
+        .pair.loser {
+            border-left-color: #e74c3c;
+        }
+
+        .pair-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .winner-badge {
+            background: #27ae60;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .loser-badge {
+            background: #e74c3c;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .refund-badge {
+            background: #f39c12;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .current-bets {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+
+        .current-bets h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .bet-count {
+            font-size: 1.1em;
+            color: #666;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.8em;
+            }
+            
+            .timer {
+                font-size: 2.5em;
+            }
+            
+            .players-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header with Timer -->
+        <div class="header">
+            <h1>⚡ Minute Betting Game</h1>
+            <div class="connection-status disconnected" id="connectionStatus">Connecting...</div>
+            <div class="timer" id="timer">00:00</div>
+            <div class="status" id="status">Waiting for players...</div>
+        </div>
+
+        <!-- Join Screen -->
+        <div class="player-setup" id="joinScreen">
+            <h2>Join the Game</h2>
+            <p style="color: #666; margin-bottom: 20px;">Enter your name to join:</p>
+            <div class="player-input-group">
+                <input type="text" id="joinNameInput" placeholder="Your name..." autofocus />
+                <button onclick="joinGame()">Join Game</button>
+            </div>
+        </div>
+
+        <!-- Lobby -->
+        <div class="player-setup" id="lobby" style="display: none;">
+            <h2>Game Lobby</h2>
+            <div class="lobby-info">
+                <p>You joined as:</p>
+                <p class="your-name" id="yourName"></p>
+            </div>
+            <p style="color: #666; margin-bottom: 15px;">Players in the game:</p>
+            <div class="player-list" id="playerList"></div>
+            <button class="start-game-btn" id="startGameBtn" onclick="startGame()" disabled>
+                Start Game (Need at least 2 players)
+            </button>
+            <button class="leave-btn" onclick="leaveGame()">Leave Game</button>
+        </div>
+
+        <!-- Game Area -->
+        <div class="game-area" id="gameArea">
+            <div class="current-bets">
+                <h3>Current Round</h3>
+                <div class="bet-count" id="betCount">0 bets placed</div>
+            </div>
+
+            <div class="players-grid" id="playersGrid"></div>
+
+            <div class="results" id="results"></div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // Socket.io connection with better settings
+        const socket = io({
+            reconnection: true,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000,
+            reconnectionAttempts: Infinity,
+            timeout: 20000
+        });
+        
+        let gameState = null;
+        let myPlayerName = localStorage.getItem('myPlayerName');
+
+        // Connection handlers
+        socket.on('connect', () => {
+            console.log('Connected to server');
+            const statusEl = document.getElementById('connectionStatus');
+            statusEl.textContent = '🟢 Connected';
+            statusEl.className = 'connection-status connected';
+        });
+
+        socket.on('disconnect', (reason) => {
+            console.log('Disconnected:', reason);
+            const statusEl = document.getElementById('connectionStatus');
+            statusEl.textContent = '🔴 Disconnected';
+            statusEl.className = 'connection-status disconnected';
+        });
+
+        socket.on('connect_error', (error) => {
+            console.error('Connection error:', error);
+        });
+
+        socket.on('reconnect', (attemptNumber) => {
+            console.log('Reconnected after', attemptNumber, 'attempts');
+        });
+
+        // Game state updates
+        socket.on('gameState', (state) => {
+            gameState = state;
+            updateUI();
+        });
+
+        socket.on('timerUpdate', (timeRemaining) => {
+            if (gameState) {
+                gameState.timeRemaining = timeRemaining;
+                updateTimer();
+            }
+        });
+
+        socket.on('roundResults', (results) => {
+            displayResults(results);
+        });
+
+        socket.on('roundEnded', (data) => {
+            if (data.noBets) {
+                updateStatus('No bets placed. Starting new round...');
+            }
+        });
+
+        // Player Management
+        function joinGame() {
+            const input = document.getElementById('joinNameInput');
+            const name = input.value.trim();
+            
+            if (!name) {
+                alert('Please enter your name!');
+                return;
+            }
+            
+            if (gameState && gameState.players.find(p => p.name === name)) {
+                alert('This name is already taken!');
+                return;
+            }
+            
+            myPlayerName = name;
+            localStorage.setItem('myPlayerName', name);
+            socket.emit('addPlayer', name);
+            
+            document.getElementById('joinScreen').style.display = 'none';
+            document.getElementById('lobby').style.display = 'block';
+            document.getElementById('yourName').textContent = name;
+        }
+
+        function leaveGame() {
+            if (confirm('Are you sure you want to leave the game?')) {
+                socket.emit('removePlayer', myPlayerName);
+                localStorage.removeItem('myPlayerName');
+                myPlayerName = null;
+                
+                document.getElementById('lobby').style.display = 'none';
+                document.getElementById('joinScreen').style.display = 'block';
+                document.getElementById('joinNameInput').value = '';
+            }
+        }
+
+        function startGame() {
+            socket.emit('startGame');
+        }
+
+        // Betting
+        function placeBetFromInput(playerName) {
+            const input = document.getElementById(`bet-${playerName}`);
+            const amount = parseInt(input.value);
+            
+            console.log('Attempting to place bet:', playerName, amount);
+            
+            if (isNaN(amount) || amount <= 0) {
+                alert('Please enter a valid amount!');
+                return;
+            }
+            
+            const player = gameState.players.find(p => p.name === playerName);
+            if (amount > player.balance) {
+                alert('Bet exceeds your balance!');
+                return;
+            }
+            
+            console.log('Emitting placeBet event');
+            socket.emit('placeBet', { playerName, amount });
+        }
+
+        // UI Update Functions
+        function updateUI() {
+            if (!gameState) return;
+
+            // Check if player is in the game
+            if (myPlayerName && gameState.players.find(p => p.name === myPlayerName)) {
+                document.getElementById('joinScreen').style.display = 'none';
+                
+                if (!gameState.gameStarted) {
+                    document.getElementById('lobby').style.display = 'block';
+                    document.getElementById('yourName').textContent = myPlayerName;
+                }
+            } else if (!myPlayerName) {
+                document.getElementById('joinScreen').style.display = 'block';
+                document.getElementById('lobby').style.display = 'none';
+            }
+
+            updateTimer();
+            updateStatus(getStatusMessage());
+            updatePlayerList();
+            updateBetCount();
+
+            if (gameState.gameStarted) {
+                document.getElementById('lobby').style.display = 'none';
+                document.getElementById('gameArea').classList.add('active');
+                renderPlayersGrid();
+            }
+        }
+
+        function updateTimer() {
+            const minutes = Math.floor(gameState.timeRemaining / 60);
+            const seconds = gameState.timeRemaining % 60;
+            const timerElement = document.getElementById('timer');
+            timerElement.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            
+            if (gameState.timeRemaining <= 10 && gameState.roundActive) {
+                timerElement.classList.add('warning');
+            } else {
+                timerElement.classList.remove('warning');
+            }
+        }
+
+        function updateStatus(message) {
+            document.getElementById('status').textContent = message;
+        }
+
+        function getStatusMessage() {
+            if (!gameState.gameStarted) {
+                return 'Waiting for players...';
+            }
+            if (gameState.roundActive) {
+                return `Round ${gameState.currentRound} - Place your bets!`;
+            }
+            return 'Processing results...';
+        }
+
+        function updatePlayerList() {
+            const list = document.getElementById('playerList');
+            list.innerHTML = gameState.players.map(p => `
+                <div class="player-tag">
+                    <span>${p.name}</span>
+                </div>
+            `).join('');
+
+            const btn = document.getElementById('startGameBtn');
+            btn.disabled = gameState.players.length < 2 || gameState.gameStarted;
+            btn.textContent = gameState.players.length < 2 
+                ? 'Start Game (Need at least 2 players)' 
+                : `Start Game with ${gameState.players.length} Players`;
+        }
+
+        function updateBetCount() {
+            const count = gameState.currentBets.length;
+            document.getElementById('betCount').textContent = 
+                `${count} bet${count !== 1 ? 's' : ''} placed`;
+        }
+
+        function renderPlayersGrid() {
+            const grid = document.getElementById('playersGrid');
+            
+            grid.innerHTML = gameState.players.map(player => {
+                const hasBet = gameState.currentBets.find(b => b.playerName === player.name);
+                
+                return `
+                    <div class="player-card">
+                        <h3>${player.name}</h3>
+                        <div class="balance ${player.balance < 0 ? 'negative' : ''}">
+                            ${player.balance} credits
+                        </div>
+                        ${gameState.roundActive && !hasBet && player.balance > 0 ? `
+                            <input 
+                                type="number" 
+                                class="bet-input" 
+                                id="bet-${player.name}" 
+                                placeholder="Bet amount"
+                                min="1"
+                                max="${player.balance}"
+                            />
+                            <button 
+                                class="bet-btn" 
+                                onclick="placeBetFromInput('${player.name}')"
+                            >
+                                Place Bet
+                            </button>
+                        ` : hasBet ? `
+                            <div class="bet-placed">✓ Bet Placed</div>
+                        ` : !gameState.roundActive ? `
+                            <div class="bet-placed" style="background: #95a5a6;">Waiting...</div>
+                        ` : `
+                            <div class="bet-placed" style="background: #e74c3c;">No Credits</div>
+                        `}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function displayResults(results) {
+            const resultsDiv = document.getElementById('results');
+            
+            let html = `
+                <div class="round-results">
+                    <div class="round-header">Round ${results.round} Results</div>
+            `;
+            
+            results.pairs.forEach(pair => {
+                html += `
+                    <div class="pair">
+                        <div class="pair-info">
+                            <div>
+                                <span class="winner-badge">🏆 ${pair.winner}</span> bet ${pair.winnerBet} 
+                                vs 
+                                <span class="loser-badge">❌ ${pair.loser}</span> bet ${pair.loserBet}
+                            </div>
+                            <div style="font-weight: bold; color: #27ae60;">
+                                +${pair.loserBet} credits
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            results.refunded.forEach(refund => {
+                html += `
+                    <div class="pair">
+                        <div class="pair-info">
+                            <div>
+                                <span class="refund-badge">↩️ ${refund.playerName}</span> refunded (odd player)
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            
+            // Keep previous results
+            const previousResults = resultsDiv.innerHTML;
+            resultsDiv.innerHTML = html + previousResults;
+        }
+
+        // Handle Enter key for joining
+        document.getElementById('joinNameInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                joinGame();
+            }
+        });
+    </script>
+</body>
+</html>
